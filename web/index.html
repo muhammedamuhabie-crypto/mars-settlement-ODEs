@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Mars Settlement ODE/PDE 3D Simulation</title>
+  <style>
+    body { margin: 0; overflow: hidden; background: #120907; font-family: system-ui, sans-serif; color: #f4ece8; }
+    #hud {
+      position: absolute; top: 16px; left: 16px; width: 330px;
+      background: rgba(20, 12, 10, 0.88); border: 1px solid #5c3324;
+      border-radius: 10px; padding: 14px; backdrop-filter: blur(6px);
+    }
+    h1 { font-size: 15px; margin: 0 0 10px; color: #ff9e6d; }
+    select, input[type="range"], button { width: 100%; margin: 6px 0; cursor: pointer; }
+    button {
+      background: #7c341d; color: #fff; border: 1px solid #a84a2a;
+      padding: 6px; border-radius: 5px; font-weight: 600;
+    }
+    .metric { display: flex; justify-content: space-between; font-size: 13px; margin: 4px 0; }
+    .bar-bg { height: 6px; background: #2e1d18; border-radius: 3px; overflow: hidden; margin-bottom: 6px; }
+    .bar-fill { height: 100%; transition: width 0.08s linear; }
+    #alert { margin-top: 8px; padding: 6px; border-radius: 6px; font-size: 12px; font-weight: 600; text-align: center; }
+    .ok { background: rgba(27, 158, 119, 0.25); color: #6ee7b7; }
+    .warn { background: rgba(217, 95, 2, 0.35); color: #fdba74; }
+    .crit { background: rgba(220, 38, 38, 0.4); color: #fca5a5; }
+    #hint { font-size: 11px; color: #b89f96; margin-top: 8px; text-align: center; }
+  </style>
+</head>
+<body>
+  <div id="hud">
+    <h1>Mars Outpost ODE/PDE Telemetry</h1>
+    <select id="scenarioSelect"></select>
+    <div class="metric"><span>Mission Day:</span><strong id="dayLabel">0</strong></div>
+    <input type="range" id="timeSlider" min="0" max="500" value="0" />
+    <button id="playBtn">Pause / Play</button>
+
+    <div class="metric"><span>Water W(t):</span><span id="valWater">-</span></div>
+    <div class="bar-bg"><div id="barWater" class="bar-fill" style="background:#38bdf8;"></div></div>
+
+    <div class="metric"><span>Oxygen O(t):</span><span id="valO2">-</span></div>
+    <div class="bar-bg"><div id="barO2" class="bar-fill" style="background:#a7f3d0;"></div></div>
+
+    <div class="metric"><span>Crop Biomass F(t):</span><span id="valFood">-</span></div>
+    <div class="bar-bg"><div id="barFood" class="bar-fill" style="background:#4ade80;"></div></div>
+
+    <div class="metric"><span>Battery Energy E(t):</span><span id="valEnergy">-</span></div>
+    <div class="bar-bg"><div id="barEnergy" class="bar-fill" style="background:#facc15;"></div></div>
+
+    <div class="metric"><span>Wall PDE T(0,t) → T(L,t):</span><span id="valTemp">-</span></div>
+    <div id="alert" class="ok">NOMINAL OPERATIONS</div>
+    <div id="hint">Drag to orbit · Scroll to zoom</div>
+  </div>
+
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+        "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+      }
+    }
+  </script>
+  <script type="module">
+    import * as THREE from 'three';
+    import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x2a120b);
+    scene.fog = new THREE.FogExp2(0x2a120b, 0.016);
+
+    const camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.1, 200);
+    camera.position.set(14, 10, 16);
+
+    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    document.body.appendChild(renderer.domElement);
+
+    const controls = new OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+    controls.target.set(0, 1.5, 0);
+
+    const sun = new THREE.DirectionalLight(0xffdec2, 2.2);
+    sun.position.set(15, 25, 10);
+    scene.add(sun, new THREE.AmbientLight(0x553322, 0.9));
+
+    const ground = new THREE.Mesh(
+      new THREE.CircleGeometry(45, 48),
+      new THREE.MeshStandardMaterial({ color: 0x7c341d, roughness: 0.95 })
+    );
+    ground.rotation.x = -Math.PI / 2;
+    scene.add(ground);
+
+    // Habitat Dome
+    const domeMat = new THREE.MeshStandardMaterial({ color: 0xdbeafe, transparent: true, opacity: 0.72 });
+    const dome = new THREE.Mesh(new THREE.SphereGeometry(3.2, 32, 16, 0, Math.PI * 2, 0, Math.PI / 2), domeMat);
+    scene.add(dome);
+
+    // Greenhouse Bay
+    const greenMat = new THREE.MeshStandardMaterial({ color: 0x166534, emissive: 0x22c55e, emissiveIntensity: 0.5 });
+    const greenhouse = new THREE.Mesh(new THREE.CylinderGeometry(1.6, 1.6, 4.5, 20), greenMat);
+    greenhouse.rotation.z = Math.PI / 2;
+    greenhouse.position.set(5.2, 1.4, 0);
+    scene.add(greenhouse);
+
+    // Resource Tanks
+    function createTank(x, z, color) {
+      const mesh = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.75, 0.75, 4.0, 20),
+        new THREE.MeshStandardMaterial({ color, roughness: 0.3 })
+      );
+      mesh.position.set(x, 2.0, z);
+      scene.add(mesh);
+      return mesh;
+    }
+    const waterTank = createTank(-4.8, -2.0, 0x0284c7);
+    const o2Tank    = createTank(-4.8,  0.5, 0x6ee7b7);
+    const batBank   = createTank(-4.8,  3.0, 0xeab308);
+
+    // Solar Array Wing
+    const solarPanel = new THREE.Mesh(
+      new THREE.BoxGeometry(5.5, 0.12, 2.4),
+      new THREE.MeshStandardMaterial({ color: 0x1e3a8a, metalness: 0.7, roughness: 0.2 })
+    );
+    solarPanel.position.set(0, 1.6, -5.5);
+    solarPanel.rotation.x = 0.35;
+    scene.add(solarPanel);
+
+    // 1D Wall PDE Spatial Node Strip (12 nodes from x=0 exterior to x=L interior)
+    const wallNodes = [];
+    for (let i = 0; i < 12; i++) {
+      const nodeMesh = new THREE.Mesh(
+        new THREE.BoxGeometry(0.28, 1.6, 0.6),
+        new THREE.MeshStandardMaterial({ color: 0x3b82f6 })
+      );
+      nodeMesh.position.set(-1.65 + i * 0.3, 0.8, 4.2);
+      scene.add(nodeMesh);
+      wallNodes.push(nodeMesh);
+    }
+
+    const resp = await fetch('./sim_data.json');
+    const simData = await resp.json();
+
+    const select = document.getElementById('scenarioSelect');
+    const slider = document.getElementById('timeSlider');
+    let currentKey = 'dust_storm';
+    let playing = true;
+
+    for (const [k, v] of Object.entries(simData.scenarios)) {
+      const opt = document.createElement('option');
+      opt.value = k;
+      opt.textContent = v.title;
+      if (k === currentKey) opt.selected = true;
+      select.appendChild(opt);
+    }
+
+    select.addEventListener('change', (e) => { currentKey = e.target.value; });
+    document.getElementById('playBtn').addEventListener('click', () => { playing = !playing; });
+
+    function updateSceneFromODE(idx) {
+      const s = simData.scenarios[currentKey];
+      const cap = simData.meta.capacities;
+      const thr = simData.meta.thresholds;
+
+      const w = s.water[idx], o = s.oxygen[idx], f = s.food[idx], e = s.energy[idx];
+      const phi = s.solar_factor[idx];
+      const tExt = s.wall_temp_c[0][idx];
+      const tInt = s.wall_temp_c[s.wall_temp_c.length - 1][idx];
+
+      const scaleTank = (mesh, val, maxVal) => {
+        const ratio = Math.max(0.05, Math.min(1.0, val / maxVal));
+        mesh.scale.y = ratio;
+        mesh.position.y = 2.0 * ratio;
+      };
+      scaleTank(waterTank, w, cap.water);
+      scaleTank(o2Tank, o, cap.oxygen);
+      scaleTank(batBank, e, cap.energy);
+
+      greenMat.emissiveIntensity = 0.1 + 1.4 * (f / cap.food);
+
+      for (let i = 0; i < wallNodes.length; i++) {
+        const tempC = s.wall_temp_c[i][idx];
+        const norm = Math.max(0, Math.min(1, (tempC + 80) / 102));
+        wallNodes[i].material.color.setHSL(0.65 * (1 - norm), 0.85, 0.5);
+      }
+
+      sun.intensity = 2.3 * phi;
+      scene.fog.density = phi < 0.3 ? 0.055 : 0.016;
+      scene.fog.color.setHex(phi < 0.3 ? 0x6b2d14 : 0x2a120b);
+      scene.background.setHex(phi < 0.3 ? 0x6b2d14 : 0x2a120b);
+
+      document.getElementById('dayLabel').textContent = `${s.t[idx].toFixed(0)} / 1000`;
+      document.getElementById('valWater').textContent = `${w.toFixed(0)} L`;
+      document.getElementById('valO2').textContent = `${o.toFixed(0)} kg`;
+      document.getElementById('valFood').textContent = `${f.toFixed(0)} kg`;
+      document.getElementById('valEnergy').textContent = `${e.toFixed(0)} kWh`;
+      document.getElementById('valTemp').textContent = `${tExt.toFixed(1)}°C → ${tInt.toFixed(1)}°C`;
+
+      document.getElementById('barWater').style.width = `${Math.min(100, (w / cap.water) * 100)}%`;
+      document.getElementById('barO2').style.width = `${Math.min(100, (o / cap.oxygen) * 100)}%`;
+      document.getElementById('barFood').style.width = `${Math.min(100, (f / cap.food) * 100)}%`;
+      document.getElementById('barEnergy').style.width = `${Math.min(100, (e / cap.energy) * 100)}%`;
+
+      const alertBox = document.getElementById('alert');
+      if (w < thr.water || o < thr.oxygen || f < thr.food || e < thr.energy) {
+        alertBox.className = 'crit';
+        alertBox.textContent = 'CRITICAL THRESHOLD BREACHED';
+      } else if (phi < 0.3) {
+        alertBox.className = 'warn';
+        alertBox.textContent = 'GLOBAL DUST STORM — SOLAR DEGRADED';
+      } else {
+        alertBox.className = 'ok';
+        alertBox.textContent = 'NOMINAL ISRU & LIFE SUPPORT';
+      }
+    }
+
+    let frame = 0;
+    function animate() {
+      requestAnimationFrame(animate);
+      if (playing && frame % 2 === 0) {
+        slider.value = (parseInt(slider.value, 10) + 1) % 501;
+      }
+      frame++;
+      updateSceneFromODE(parseInt(slider.value, 10));
+      controls.update();
+      renderer.render(scene, camera);
+    }
+
+    window.addEventListener('resize', () => {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+
+    animate();
+  </script>
+</body>
+</html>
