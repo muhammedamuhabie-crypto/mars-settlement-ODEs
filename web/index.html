@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
@@ -46,9 +46,9 @@
     <div class="metric"><span>Battery Energy E(t):</span><span id="valEnergy">-</span></div>
     <div class="bar-bg"><div id="barEnergy" class="bar-fill" style="background:#facc15;"></div></div>
 
-    <div class="metric"><span>Wall PDE T(0,t) → T(L,t):</span><span id="valTemp">-</span></div>
+    <div class="metric"><span>Wall PDE T(0,t) â†’ T(L,t):</span><span id="valTemp">-</span></div>
     <div id="alert" class="ok">NOMINAL OPERATIONS</div>
-    <div id="hint">Drag to orbit · Scroll to zoom</div>
+    <div id="hint">Drag to orbit Â· Scroll to zoom</div>
   </div>
 
   <script type="importmap">
@@ -89,18 +89,185 @@
     ground.rotation.x = -Math.PI / 2;
     scene.add(ground);
 
-    // Habitat Dome
-    const domeMat = new THREE.MeshStandardMaterial({ color: 0xdbeafe, transparent: true, opacity: 0.72 });
-    const dome = new THREE.Mesh(new THREE.SphereGeometry(3.2, 32, 16, 0, Math.PI * 2, 0, Math.PI / 2), domeMat);
-    scene.add(dome);
+    // Central Pressurized Habitat: geodesic dome
+    const habitat = new THREE.Group();
+    scene.add(habitat);
 
-    // Greenhouse Bay
-    const greenMat = new THREE.MeshStandardMaterial({ color: 0x166534, emissive: 0x22c55e, emissiveIntensity: 0.5 });
-    const greenhouse = new THREE.Mesh(new THREE.CylinderGeometry(1.6, 1.6, 4.5, 20), greenMat);
-    greenhouse.rotation.z = Math.PI / 2;
-    greenhouse.position.set(5.2, 1.4, 0);
-    scene.add(greenhouse);
+    const foundationMat = new THREE.MeshStandardMaterial({
+      color: 0x777b80, metalness: 0.55, roughness: 0.62
+    });
 
+    const foundation = new THREE.Mesh(
+      new THREE.CylinderGeometry(3.28, 3.38, 0.34, 48),
+      foundationMat
+    );
+    foundation.position.y = 0.17;
+    habitat.add(foundation);
+
+    const foundationRing = new THREE.Mesh(
+      new THREE.TorusGeometry(3.24, 0.09, 10, 64),
+      new THREE.MeshStandardMaterial({ color: 0xd5b58a, metalness: 0.65 })
+    );
+    foundationRing.rotation.x = Math.PI / 2;
+    foundationRing.position.y = 0.36;
+    habitat.add(foundationRing);
+
+    const domeGeometry = new THREE.SphereGeometry(
+      3.2, 24, 12, 0, Math.PI * 2, 0, Math.PI / 2
+    );
+
+    const domeShell = new THREE.Mesh(
+      domeGeometry,
+      new THREE.MeshStandardMaterial({
+        color: 0xb9e5f2,
+        transparent: true,
+        opacity: 0.16,
+        roughness: 0.18,
+        metalness: 0.18,
+        side: THREE.DoubleSide,
+        depthWrite: false
+      })
+    );
+    domeShell.position.y = 0.34;
+    habitat.add(domeShell);
+
+    // Triangular geodesic support frame
+    const domeFrame = new THREE.Mesh(
+      domeGeometry,
+      new THREE.MeshStandardMaterial({
+        color: 0xe8d4ae,
+        wireframe: true,
+        transparent: true,
+        opacity: 0.92,
+        metalness: 0.45
+      })
+    );
+    domeFrame.position.y = 0.34;
+    habitat.add(domeFrame);
+
+    // Interior living modules
+    const moduleMat = new THREE.MeshStandardMaterial({
+      color: 0xc7cbd0,
+      metalness: 0.35,
+      roughness: 0.55
+    });
+
+    const moduleWindowMat = new THREE.MeshStandardMaterial({
+      color: 0x244b5b,
+      emissive: 0x123747,
+      emissiveIntensity: 0.45
+    });
+
+    function addLivingModule(x, z, length, radius) {
+      const pod = new THREE.Mesh(
+        new THREE.CylinderGeometry(radius, radius, length, 20),
+        moduleMat
+      );
+      pod.rotation.z = Math.PI / 2;
+      pod.position.set(x, 0.95, z);
+      habitat.add(pod);
+
+      const endCap = new THREE.Mesh(
+        new THREE.CircleGeometry(radius * 0.82, 20),
+        moduleWindowMat
+      );
+      endCap.position.set(x + length / 2 + 0.012, 0.95, z);
+      endCap.rotation.y = Math.PI / 2;
+      habitat.add(endCap);
+    }
+
+    addLivingModule(-1.05, -0.75, 1.75, 0.48);
+    addLivingModule(1.05, -0.75, 1.75, 0.48);
+    addLivingModule(0, 0.85, 1.9, 0.52);
+
+    // Greenhouse beds and vegetation
+    const greenMat = new THREE.MeshStandardMaterial({
+      color: 0x238443,
+      emissive: 0x14552a,
+      emissiveIntensity: 0.45,
+      roughness: 0.8
+    });
+
+    const soilMat = new THREE.MeshStandardMaterial({
+      color: 0x493321,
+      roughness: 1
+    });
+
+    function addPlant(x, z, scale = 1) {
+      const stem = new THREE.Mesh(
+        new THREE.CylinderGeometry(
+          0.025 * scale, 0.04 * scale, 0.42 * scale, 7
+        ),
+        new THREE.MeshStandardMaterial({ color: 0x527b3c })
+      );
+      stem.position.set(x, 0.72 + 0.21 * scale, z);
+      habitat.add(stem);
+
+      const leaves = new THREE.Mesh(
+        new THREE.IcosahedronGeometry(0.19 * scale, 1),
+        greenMat
+      );
+      leaves.position.set(x, 0.92 + 0.2 * scale, z);
+      leaves.scale.set(1, 1.25, 1);
+      habitat.add(leaves);
+    }
+
+    for (const x of [-1.75, -0.95, 0.95, 1.75]) {
+      const bed = new THREE.Mesh(
+        new THREE.BoxGeometry(0.55, 0.22, 1.35),
+        soilMat
+      );
+      bed.position.set(x, 0.48, 0.65);
+      habitat.add(bed);
+
+      for (const z of [0.2, 0.65, 1.1]) {
+        addPlant(x, z, 0.8);
+      }
+    }
+
+    // Pressurized entrance airlock
+    const airlock = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.58, 0.58, 1.35, 24),
+      moduleMat
+    );
+    airlock.rotation.x = Math.PI / 2;
+    airlock.position.set(0, 0.83, 3.45);
+    habitat.add(airlock);
+
+    const airlockDoor = new THREE.Mesh(
+      new THREE.CircleGeometry(0.43, 24),
+      moduleWindowMat
+    );
+    airlockDoor.position.set(0, 0.83, 4.13);
+    habitat.add(airlockDoor);
+
+    const airlockRim = new THREE.Mesh(
+      new THREE.TorusGeometry(0.55, 0.07, 10, 32),
+      foundationMat
+    );
+    airlockRim.position.set(0, 0.83, 4.14);
+    habitat.add(airlockRim);
+
+    // Exterior service lights
+    const serviceLightMat = new THREE.MeshStandardMaterial({
+      color: 0xffc078,
+      emissive: 0xff8a38,
+      emissiveIntensity: 1.2
+    });
+
+    for (let i = 0; i < 8; i++) {
+      const angle = (i / 8) * Math.PI * 2;
+      const light = new THREE.Mesh(
+        new THREE.SphereGeometry(0.075, 10, 8),
+        serviceLightMat
+      );
+      light.position.set(
+        Math.cos(angle) * 3.18,
+        0.48,
+        Math.sin(angle) * 3.18
+      );
+      habitat.add(light);
+    }
     // Resource Tanks
     function createTank(x, z, color) {
       const mesh = new THREE.Mesh(
@@ -192,7 +359,7 @@
       document.getElementById('valO2').textContent = `${o.toFixed(0)} kg`;
       document.getElementById('valFood').textContent = `${f.toFixed(0)} kg`;
       document.getElementById('valEnergy').textContent = `${e.toFixed(0)} kWh`;
-      document.getElementById('valTemp').textContent = `${tExt.toFixed(1)}°C → ${tInt.toFixed(1)}°C`;
+      document.getElementById('valTemp').textContent = `${tExt.toFixed(1)}Â°C â†’ ${tInt.toFixed(1)}Â°C`;
 
       document.getElementById('barWater').style.width = `${Math.min(100, (w / cap.water) * 100)}%`;
       document.getElementById('barO2').style.width = `${Math.min(100, (o / cap.oxygen) * 100)}%`;
@@ -205,7 +372,7 @@
         alertBox.textContent = 'CRITICAL THRESHOLD BREACHED';
       } else if (phi < 0.3) {
         alertBox.className = 'warn';
-        alertBox.textContent = 'GLOBAL DUST STORM — SOLAR DEGRADED';
+        alertBox.textContent = 'GLOBAL DUST STORM â€” SOLAR DEGRADED';
       } else {
         alertBox.className = 'ok';
         alertBox.textContent = 'NOMINAL ISRU & LIFE SUPPORT';
@@ -234,3 +401,4 @@
   </script>
 </body>
 </html>
+
