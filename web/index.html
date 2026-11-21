@@ -64,11 +64,11 @@
     import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
     const scene = new THREE.Scene();
-    scene.background = new THREE.Color(0x2a120b);
-    scene.fog = new THREE.FogExp2(0x2a120b, 0.016);
+    scene.background = new THREE.Color(0x4a2a1c);
+    scene.fog = new THREE.FogExp2(0x4a2a1c, 0.012);
 
     const camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.1, 200);
-    camera.position.set(14, 10, 16);
+    camera.position.set(12, 8, 15);
 
     const renderer = new THREE.WebGLRenderer({ antialias: true });
     renderer.setSize(window.innerWidth, window.innerHeight);
@@ -76,234 +76,656 @@
 
     const controls = new OrbitControls(camera, renderer.domElement);
     controls.enableDamping = true;
-    controls.target.set(0, 1.5, 0);
+    controls.target.set(-2, 1.5, 0);
 
-    const sun = new THREE.DirectionalLight(0xffdec2, 2.2);
+    const sun = new THREE.DirectionalLight(0xffdec2, 3.0);
     sun.position.set(15, 25, 10);
-    scene.add(sun, new THREE.AmbientLight(0x553322, 0.9));
+    scene.add(sun, new THREE.AmbientLight(0x775544, 1.3));
 
     const ground = new THREE.Mesh(
       new THREE.CircleGeometry(45, 48),
-      new THREE.MeshStandardMaterial({ color: 0x7c341d, roughness: 0.95 })
+      new THREE.MeshStandardMaterial({ color: 0x914326, roughness: 0.95 })
     );
     ground.rotation.x = -Math.PI / 2;
     scene.add(ground);
 
-    // Central Pressurized Habitat: geodesic dome
-    const habitat = new THREE.Group();
-    scene.add(habitat);
+    // ============================================================
+// MARS SETTLEMENT HABITAT - REFERENCE IMAGE REDESIGN
+// ============================================================
 
-    const foundationMat = new THREE.MeshStandardMaterial({
-      color: 0x777b80, metalness: 0.55, roughness: 0.62
-    });
+const habitat = new THREE.Group();
+scene.add(habitat);
 
-    const foundation = new THREE.Mesh(
-      new THREE.CylinderGeometry(3.28, 3.38, 0.34, 48),
-      foundationMat
-    );
-    foundation.position.y = 0.17;
-    habitat.add(foundation);
+// Materials
+const metalMat = new THREE.MeshStandardMaterial({
+  color: 0xb9b6aa, metalness: 0.55, roughness: 0.4
+});
+const bronzeMat = new THREE.MeshStandardMaterial({
+  color: 0xb77c43, metalness: 0.78, roughness: 0.28
+});
+const darkMetalMat = new THREE.MeshStandardMaterial({
+  color: 0x343b40, metalness: 0.65, roughness: 0.48
+});
+const glassMat = new THREE.MeshPhysicalMaterial({
+  color: 0x76c5d9, transparent: true, opacity: 0.13,
+  roughness: 0.12, metalness: 0.12, side: THREE.DoubleSide,
+  depthWrite: false
+});
+const blueGlassMat = new THREE.MeshStandardMaterial({
+  color: 0x07506b, emissive: 0x063448,
+  emissiveIntensity: 0.55, metalness: 0.5, roughness: 0.2
+});
 
-    const foundationRing = new THREE.Mesh(
-      new THREE.TorusGeometry(3.24, 0.09, 10, 64),
-      new THREE.MeshStandardMaterial({ color: 0xd5b58a, metalness: 0.65 })
-    );
-    foundationRing.rotation.x = Math.PI / 2;
-    foundationRing.position.y = 0.36;
-    habitat.add(foundationRing);
+// Circular reinforced foundation
+const foundation = new THREE.Mesh(
+  new THREE.CylinderGeometry(4.45, 4.58, 0.55, 96),
+  new THREE.MeshStandardMaterial({
+    color: 0x55595b, metalness: 0.55, roughness: 0.65
+  })
+);
+foundation.position.y = 0.275;
+habitat.add(foundation);
 
-    const domeGeometry = new THREE.SphereGeometry(
-      3.2, 24, 12, 0, Math.PI * 2, 0, Math.PI / 2
-    );
+const lowerRing = new THREE.Mesh(
+  new THREE.TorusGeometry(4.42, 0.14, 16, 100),
+  bronzeMat
+);
+lowerRing.rotation.x = Math.PI / 2;
+lowerRing.position.y = 0.48;
+habitat.add(lowerRing);
 
-    const domeShell = new THREE.Mesh(
-      domeGeometry,
-      new THREE.MeshStandardMaterial({
-        color: 0xb9e5f2,
-        transparent: true,
-        opacity: 0.16,
-        roughness: 0.18,
-        metalness: 0.18,
-        side: THREE.DoubleSide,
-        depthWrite: false
-      })
-    );
-    domeShell.position.y = 0.34;
-    habitat.add(domeShell);
+const upperRing = new THREE.Mesh(
+  new THREE.TorusGeometry(4.28, 0.075, 12, 100),
+  darkMetalMat
+);
+upperRing.rotation.x = Math.PI / 2;
+upperRing.position.y = 0.57;
+habitat.add(upperRing);
 
-    // Triangular geodesic support frame
-    const domeFrame = new THREE.Mesh(
-      domeGeometry,
-      new THREE.MeshStandardMaterial({
-        color: 0xe8d4ae,
-        wireframe: true,
-        transparent: true,
-        opacity: 0.92,
-        metalness: 0.45
-      })
-    );
-    domeFrame.position.y = 0.34;
-    habitat.add(domeFrame);
+// Dome pressure shell
+const domeRadius = 4.40;
+const domeBase = 0.55;
 
-    // Interior living modules
-    const moduleMat = new THREE.MeshStandardMaterial({
-      color: 0xc7cbd0,
-      metalness: 0.35,
-      roughness: 0.55
-    });
+const domeShell = new THREE.Mesh(
+  new THREE.SphereGeometry(
+    domeRadius, 48, 28, 0, Math.PI * 2, 0, Math.PI / 2
+  ),
+  glassMat
+);
+domeShell.position.y = domeBase;
+habitat.add(domeShell);
 
-    const moduleWindowMat = new THREE.MeshStandardMaterial({
-      color: 0x244b5b,
-      emissive: 0x123747,
-      emissiveIntensity: 0.45
-    });
+// Geodesic triangular bronze framework
+const icoGeometry = new THREE.IcosahedronGeometry(domeRadius, 2);
+const icoPositions = icoGeometry.attributes.position;
+const icoIndex = icoGeometry.index;
+const frameEdges = new Map();
 
-    function addLivingModule(x, z, length, radius) {
-      const pod = new THREE.Mesh(
-        new THREE.CylinderGeometry(radius, radius, length, 20),
-        moduleMat
-      );
-      pod.rotation.z = Math.PI / 2;
-      pod.position.set(x, 0.95, z);
-      habitat.add(pod);
+function pointKey(p) {
+  return `${p.x.toFixed(4)},${p.y.toFixed(4)},${p.z.toFixed(4)}`;
+}
 
-      const endCap = new THREE.Mesh(
-        new THREE.CircleGeometry(radius * 0.82, 20),
-        moduleWindowMat
-      );
-      endCap.position.set(x + length / 2 + 0.012, 0.95, z);
-      endCap.rotation.y = Math.PI / 2;
-      habitat.add(endCap);
+function addFrameEdge(a, b) {
+  const ka = pointKey(a);
+  const kb = pointKey(b);
+  const key = ka < kb ? `${ka}|${kb}` : `${kb}|${ka}`;
+  if (!frameEdges.has(key)) {
+    frameEdges.set(key, [a.clone(), b.clone()]);
+  }
+}
+
+function clipTriangle(points) {
+  const output = [];
+
+  for (let i = 0; i < points.length; i++) {
+    const a = points[i];
+    const b = points[(i + 1) % points.length];
+    const insideA = a.y >= -0.00001;
+    const insideB = b.y >= -0.00001;
+
+    if (insideA && insideB) {
+      output.push(b.clone());
+    } else if (insideA && !insideB) {
+      const t = a.y / (a.y - b.y);
+      output.push(a.clone().lerp(b, t));
+    } else if (!insideA && insideB) {
+      const t = a.y / (a.y - b.y);
+      output.push(a.clone().lerp(b, t));
+      output.push(b.clone());
     }
+  }
+  return output;
+}
 
-    addLivingModule(-1.05, -0.75, 1.75, 0.48);
-    addLivingModule(1.05, -0.75, 1.75, 0.48);
-    addLivingModule(0, 0.85, 1.9, 0.52);
+const faceCount = icoIndex
+  ? icoIndex.count / 3
+  : icoPositions.count / 3;
 
-    // Greenhouse beds and vegetation
-    const greenMat = new THREE.MeshStandardMaterial({
-      color: 0x238443,
-      emissive: 0x14552a,
-      emissiveIntensity: 0.45,
-      roughness: 0.8
-    });
+for (let face = 0; face < faceCount; face++) {
+  const ids = icoIndex
+    ? [
+        icoIndex.getX(face * 3),
+        icoIndex.getX(face * 3 + 1),
+        icoIndex.getX(face * 3 + 2)
+      ]
+    : [face * 3, face * 3 + 1, face * 3 + 2];
 
-    const soilMat = new THREE.MeshStandardMaterial({
-      color: 0x493321,
-      roughness: 1
-    });
+  const triangle = ids.map(id =>
+    new THREE.Vector3().fromBufferAttribute(icoPositions, id)
+  );
 
-    function addPlant(x, z, scale = 1) {
-      const stem = new THREE.Mesh(
-        new THREE.CylinderGeometry(
-          0.025 * scale, 0.04 * scale, 0.42 * scale, 7
-        ),
-        new THREE.MeshStandardMaterial({ color: 0x527b3c })
-      );
-      stem.position.set(x, 0.72 + 0.21 * scale, z);
-      habitat.add(stem);
+  const clipped = clipTriangle(triangle);
 
-      const leaves = new THREE.Mesh(
-        new THREE.IcosahedronGeometry(0.19 * scale, 1),
-        greenMat
-      );
-      leaves.position.set(x, 0.92 + 0.2 * scale, z);
-      leaves.scale.set(1, 1.25, 1);
-      habitat.add(leaves);
-    }
+  for (let j = 0; j < clipped.length; j++) {
+    addFrameEdge(clipped[j], clipped[(j + 1) % clipped.length]);
+  }
+}
 
-    for (const x of [-1.75, -0.95, 0.95, 1.75]) {
-      const bed = new THREE.Mesh(
-        new THREE.BoxGeometry(0.55, 0.22, 1.35),
-        soilMat
-      );
-      bed.position.set(x, 0.48, 0.65);
-      habitat.add(bed);
+const frameVertices = [];
+const jointPositions = new Map();
 
-      for (const z of [0.2, 0.65, 1.1]) {
-        addPlant(x, z, 0.8);
-      }
-    }
+for (const edge of frameEdges.values()) {
+  const a = edge[0];
+  const b = edge[1];
 
-    // Pressurized entrance airlock
-    const airlock = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.58, 0.58, 1.35, 24),
-      moduleMat
+  frameVertices.push(a.x, a.y, a.z, b.x, b.y, b.z);
+  jointPositions.set(pointKey(a), a);
+  jointPositions.set(pointKey(b), b);
+}
+
+const frameGeometry = new THREE.BufferGeometry();
+frameGeometry.setAttribute(
+  'position',
+  new THREE.Float32BufferAttribute(frameVertices, 3)
+);
+
+const domeFrame = new THREE.LineSegments(
+  frameGeometry,
+  new THREE.LineBasicMaterial({
+    color: 0xd5a36b, transparent: true, opacity: 0.98
+  })
+);
+domeFrame.position.y = domeBase;
+habitat.add(domeFrame);
+
+// Bronze connection joints
+const jointGeometry = new THREE.SphereGeometry(0.055, 8, 8);
+for (const point of jointPositions.values()) {
+  const joint = new THREE.Mesh(jointGeometry, bronzeMat);
+  joint.position.set(point.x, point.y + domeBase, point.z);
+  habitat.add(joint);
+}
+
+// Interior living modules
+const moduleMat = new THREE.MeshStandardMaterial({
+  color: 0xc4c2b9, metalness: 0.38, roughness: 0.48
+});
+const moduleDarkMat = new THREE.MeshStandardMaterial({
+  color: 0x777e80, metalness: 0.65, roughness: 0.4
+});
+
+function addLivingModule(z, length, radius) {
+  const centerY = 1.72;
+
+  const body = new THREE.Mesh(
+    new THREE.CylinderGeometry(radius, radius, length, 48, 1),
+    moduleMat
+  );
+  body.rotation.z = Math.PI / 2;
+  body.position.set(0, centerY, z);
+  habitat.add(body);
+
+  // Circular glazed ends
+  for (const side of [-1, 1]) {
+    const cap = new THREE.Mesh(
+      new THREE.CircleGeometry(radius * 0.79, 40),
+      blueGlassMat
     );
-    airlock.rotation.x = Math.PI / 2;
-    airlock.position.set(0, 0.83, 3.45);
-    habitat.add(airlock);
+    cap.position.set(side * (length / 2 + 0.012), centerY, z);
+    cap.rotation.y = Math.PI / 2;
+    habitat.add(cap);
 
-    const airlockDoor = new THREE.Mesh(
-      new THREE.CircleGeometry(0.43, 24),
-      moduleWindowMat
+    const rim = new THREE.Mesh(
+      new THREE.TorusGeometry(radius * 0.82, 0.07, 12, 40),
+      bronzeMat
     );
-    airlockDoor.position.set(0, 0.83, 4.13);
-    habitat.add(airlockDoor);
+    rim.rotation.y = Math.PI / 2;
+    rim.position.set(side * (length / 2 + 0.02), centerY, z);
+    habitat.add(rim);
+  }
 
-    const airlockRim = new THREE.Mesh(
-      new THREE.TorusGeometry(0.55, 0.07, 10, 32),
-      foundationMat
+  // Reinforced structural bands
+  for (const x of [-length * 0.36, 0, length * 0.36]) {
+    const band = new THREE.Mesh(
+      new THREE.TorusGeometry(radius * 1.005, 0.055, 10, 40),
+      moduleDarkMat
     );
-    airlockRim.position.set(0, 0.83, 4.14);
-    habitat.add(airlockRim);
+    band.rotation.y = Math.PI / 2;
+    band.position.set(x, centerY, z);
+    habitat.add(band);
+  }
 
-    // Exterior service lights
-    const serviceLightMat = new THREE.MeshStandardMaterial({
-      color: 0xffc078,
-      emissive: 0xff8a38,
-      emissiveIntensity: 1.2
-    });
-
-    for (let i = 0; i < 8; i++) {
-      const angle = (i / 8) * Math.PI * 2;
-      const light = new THREE.Mesh(
-        new THREE.SphereGeometry(0.075, 10, 8),
-        serviceLightMat
-      );
-      light.position.set(
-        Math.cos(angle) * 3.18,
-        0.48,
-        Math.sin(angle) * 3.18
-      );
-      habitat.add(light);
-    }
-    // Resource Tanks
-    function createTank(x, z, color) {
-      const mesh = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.75, 0.75, 4.0, 20),
-        new THREE.MeshStandardMaterial({ color, roughness: 0.3 })
-      );
-      mesh.position.set(x, 2.0, z);
-      scene.add(mesh);
-      return mesh;
-    }
-    const waterTank = createTank(-4.8, -2.0, 0x0284c7);
-    const o2Tank    = createTank(-4.8,  0.5, 0x6ee7b7);
-    const batBank   = createTank(-4.8,  3.0, 0xeab308);
-
-    // Solar Array Wing
-    const solarPanel = new THREE.Mesh(
-      new THREE.BoxGeometry(5.5, 0.12, 2.4),
-      new THREE.MeshStandardMaterial({ color: 0x1e3a8a, metalness: 0.7, roughness: 0.2 })
+  // Upper observation windows
+  for (const x of [-1.05, -0.35, 0.35, 1.05]) {
+    const windowMesh = new THREE.Mesh(
+      new THREE.BoxGeometry(0.38, 0.15, 0.045),
+      blueGlassMat
     );
-    solarPanel.position.set(0, 1.6, -5.5);
-    solarPanel.rotation.x = 0.35;
-    scene.add(solarPanel);
+    windowMesh.position.set(x, centerY + radius * 0.78, z);
+    habitat.add(windowMesh);
+  }
+}
 
-    // 1D Wall PDE Spatial Node Strip (12 nodes from x=0 exterior to x=L interior)
-    const wallNodes = [];
-    for (let i = 0; i < 12; i++) {
-      const nodeMesh = new THREE.Mesh(
-        new THREE.BoxGeometry(0.28, 1.6, 0.6),
-        new THREE.MeshStandardMaterial({ color: 0x3b82f6 })
-      );
-      nodeMesh.position.set(-1.65 + i * 0.3, 0.8, 4.2);
-      scene.add(nodeMesh);
-      wallNodes.push(nodeMesh);
+addLivingModule(-0.82, 3.75, 0.76);
+addLivingModule(0.92, 3.75, 0.76);
+
+// Greenhouse growing beds
+const soilMat = new THREE.MeshStandardMaterial({
+  color: 0x39271a, roughness: 1
+});
+const bedMat = new THREE.MeshStandardMaterial({
+  color: 0x817c6d, metalness: 0.4, roughness: 0.6
+});
+
+const greenMat = new THREE.MeshStandardMaterial({
+  color: 0x238d42,
+  emissive: 0x14552a,
+  emissiveIntensity: 0.45,
+  roughness: 0.78
+});
+
+const leafLightMat = new THREE.MeshStandardMaterial({
+  color: 0x60b94b, roughness: 0.8
+});
+const stemMat = new THREE.MeshStandardMaterial({
+  color: 0x537d38
+});
+
+function addPlant(x, z, scale = 1) {
+  const stem = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.025 * scale, 0.045 * scale,
+      0.48 * scale, 8),
+    stemMat
+  );
+  stem.position.set(x, 0.65 + 0.24 * scale, z);
+  habitat.add(stem);
+
+  for (let i = 0; i < 5; i++) {
+    const angle = (i / 5) * Math.PI * 2;
+    const leaf = new THREE.Mesh(
+      new THREE.SphereGeometry(0.17 * scale, 10, 8),
+      i % 2 ? greenMat : leafLightMat
+    );
+    leaf.scale.set(1.25, 0.48, 0.7);
+    leaf.position.set(
+      x + Math.cos(angle) * 0.16 * scale,
+      0.82 + 0.2 * scale,
+      z + Math.sin(angle) * 0.16 * scale
+    );
+    habitat.add(leaf);
+  }
+}
+
+function addGrowingBed(x, z, width, depth) {
+  const base = new THREE.Mesh(
+    new THREE.BoxGeometry(width, 0.2, depth),
+    bedMat
+  );
+  base.position.set(x, 0.57, z);
+  habitat.add(base);
+
+  const soil = new THREE.Mesh(
+    new THREE.BoxGeometry(width - 0.12, 0.08, depth - 0.12),
+    soilMat
+  );
+  soil.position.set(x, 0.70, z);
+  habitat.add(soil);
+
+  const count = Math.max(2, Math.floor(width / 0.28));
+  for (let i = 0; i < count; i++) {
+    const px = x - width * 0.36 + i * (width * 0.72 / Math.max(1, count - 1));
+    for (const dz of [-depth * 0.22, depth * 0.22]) {
+      addPlant(px, z + dz, 0.9);
     }
+  }
+}
 
-    const resp = await fetch('./sim_data.json');
+addGrowingBed(-2.65, 1.8, 1.15, 1.25);
+addGrowingBed(-1.25, 2.55, 1.15, 1.0);
+addGrowingBed(0.25, 2.65, 1.15, 1.0);
+addGrowingBed(1.75, 2.15, 1.2, 1.25);
+addGrowingBed(2.75, 0.95, 0.85, 1.15);
+addGrowingBed(-2.9, -0.25, 0.9, 1.0);
+
+// Front entrance airlock
+const airlockBody = new THREE.Mesh(
+  new THREE.CylinderGeometry(0.65, 0.65, 1.55, 40),
+  moduleMat
+);
+airlockBody.rotation.x = Math.PI / 2;
+airlockBody.position.set(-0.95, 1.05, 3.72);
+habitat.add(airlockBody);
+
+const airlockDoor = new THREE.Mesh(
+  new THREE.CircleGeometry(0.48, 40),
+  blueGlassMat
+);
+airlockDoor.position.set(-0.95, 1.05, 4.51);
+habitat.add(airlockDoor);
+
+const airlockRim = new THREE.Mesh(
+  new THREE.TorusGeometry(0.61, 0.09, 14, 48),
+  bronzeMat
+);
+airlockRim.position.set(-0.95, 1.05, 4.53);
+habitat.add(airlockRim);
+
+// Airlock steps
+const stepsMat = new THREE.MeshStandardMaterial({
+  color: 0x62696b, metalness: 0.5, roughness: 0.65
+});
+for (let i = 0; i < 3; i++) {
+  const step = new THREE.Mesh(
+    new THREE.BoxGeometry(1.15, 0.12, 0.32),
+    stepsMat
+  );
+  step.position.set(-0.95, 0.62 - i * 0.12, 4.75 + i * 0.3);
+  habitat.add(step);
+}
+
+// Warm foundation lights
+const serviceLightMat = new THREE.MeshStandardMaterial({
+  color: 0xffd28a,
+  emissive: 0xff8a32,
+  emissiveIntensity: 1.8
+});
+
+for (let i = 0; i < 16; i++) {
+  const angle = (i / 16) * Math.PI * 2;
+  const light = new THREE.Mesh(
+    new THREE.SphereGeometry(0.085, 12, 10),
+    serviceLightMat
+  );
+  light.position.set(
+    Math.cos(angle) * 4.32,
+    0.56,
+    Math.sin(angle) * 4.32
+  );
+  habitat.add(light);
+}
+
+// ============================================================
+ // ============================================================
+ // HABITAT ARCHITECTURAL UPGRADE
+ // ============================================================
+
+ // Enlarge the complete habitat and move it slightly right
+ habitat.position.set(0.75, 0, 0);
+ habitat.scale.setScalar(1.42);
+
+ // Pressurized transparent corridor connecting both modules
+ const corridor = new THREE.Mesh(
+   new THREE.CylinderGeometry(0.27, 0.27, 1.75, 32),
+   new THREE.MeshPhysicalMaterial({
+     color: 0x80c9db,
+     transparent: true,
+     opacity: 0.32,
+     roughness: 0.15,
+     metalness: 0.2
+   })
+ );
+ corridor.rotation.x = Math.PI / 2;
+ corridor.position.set(0, 1.72, 0.05);
+ habitat.add(corridor);
+
+ // Bronze connection collars
+ for (const z of [-0.78, 0.88]) {
+   const collar = new THREE.Mesh(
+     new THREE.TorusGeometry(0.29, 0.065, 12, 32),
+     bronzeMat
+   );
+   collar.rotation.x = Math.PI / 2;
+   collar.position.set(0, 1.72, z);
+   habitat.add(collar);
+ }
+
+ // Additional observation windows on the living modules
+ for (const z of [-0.82, 0.92]) {
+   for (let i = 0; i < 7; i++) {
+     const x = -1.5 + i * 0.5;
+
+     const windowFrame = new THREE.Mesh(
+       new THREE.BoxGeometry(0.38, 0.27, 0.065),
+       darkMetalMat
+     );
+     windowFrame.position.set(x, 1.76, z + 0.745);
+     habitat.add(windowFrame);
+
+     const windowGlass = new THREE.Mesh(
+       new THREE.BoxGeometry(0.29, 0.18, 0.025),
+       blueGlassMat
+     );
+     windowGlass.position.set(x, 1.76, z + 0.785);
+     habitat.add(windowGlass);
+   }
+ }
+
+ // Reinforced dome support columns
+ const supportGeometry = new THREE.CylinderGeometry(
+   0.075, 0.11, 0.55, 12
+ );
+
+ for (let i = 0; i < 16; i++) {
+   const angle = (i / 16) * Math.PI * 2;
+
+   const support = new THREE.Mesh(
+     supportGeometry,
+     bronzeMat
+   );
+
+   support.position.set(
+     Math.cos(angle) * 4.12,
+     0.85,
+     Math.sin(angle) * 4.12
+   );
+
+   habitat.add(support);
+ }
+
+ // Secondary illuminated foundation ring
+ const foundationAccent = new THREE.Mesh(
+   new THREE.TorusGeometry(4.55, 0.045, 12, 120),
+   new THREE.MeshStandardMaterial({
+     color: 0xffb65c,
+     emissive: 0xff7a24,
+     emissiveIntensity: 1.5,
+     metalness: 0.5
+   })
+ );
+ foundationAccent.rotation.x = Math.PI / 2;
+ foundationAccent.position.y = 0.16;
+ habitat.add(foundationAccent);
+
+ // Interior greenhouse illumination
+ const interiorLightPositions = [
+   [-2.5, 2.8, 0.8],
+   [0, 2.8, 1.0],
+   [2.5, 2.8, 0.8],
+   [-2.3, 2.8, -1.5],
+   [2.3, 2.8, -1.5]
+ ];
+
+ for (const position of interiorLightPositions) {
+   const lamp = new THREE.PointLight(0xffd79a, 1.0, 4.5);
+   lamp.position.set(position[0], position[1], position[2]);
+   habitat.add(lamp);
+ }
+
+ // Greenhouse service walkway
+ const walkway = new THREE.Mesh(
+   new THREE.BoxGeometry(0.65, 0.09, 2.4),
+   new THREE.MeshStandardMaterial({
+     color: 0x9a9b91,
+     metalness: 0.65,
+     roughness: 0.38
+   })
+ );
+ walkway.position.set(0.85, 0.68, 2.1);
+ habitat.add(walkway);
+
+ // Small illuminated entrance beacon
+ const beacon = new THREE.Mesh(
+   new THREE.CylinderGeometry(0.09, 0.09, 0.48, 16),
+   new THREE.MeshStandardMaterial({
+     color: 0xffd28a,
+     emissive: 0xff8a32,
+     emissiveIntensity: 2
+   })
+ );
+ beacon.position.set(-1.85, 1.05, 4.05);
+ habitat.add(beacon);
+// THREE LARGE RESOURCE TANKS - LEFT OF HABITAT
+// ============================================================
+
+function createTank(x, z, color) {
+  const group = new THREE.Group();
+
+  const tankMaterial = new THREE.MeshStandardMaterial({
+    color, metalness: 0.38, roughness: 0.3
+  });
+
+  const body = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.72, 0.72, 3.45, 40),
+    tankMaterial
+  );
+  body.position.y = 1.95;
+  group.add(body);
+
+  const top = new THREE.Mesh(
+    new THREE.SphereGeometry(0.72, 32, 12, 0, Math.PI * 2, 0, Math.PI / 2),
+    tankMaterial
+  );
+  top.position.y = 3.675;
+  group.add(top);
+
+  const bottom = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.72, 0.72, 0.14, 32),
+    darkMetalMat
+  );
+  bottom.position.y = 0.22;
+  group.add(bottom);
+
+  for (const y of [0.65, 2.9, 3.35]) {
+    const band = new THREE.Mesh(
+      new THREE.TorusGeometry(0.73, 0.045, 8, 40),
+      bronzeMat
+    );
+    band.rotation.x = Math.PI / 2;
+    band.position.y = y;
+    group.add(band);
+  }
+
+  for (let i = 0; i < 3; i++) {
+    const foot = new THREE.Mesh(
+      new THREE.BoxGeometry(0.16, 0.38, 0.16),
+      darkMetalMat
+    );
+    const a = i * Math.PI * 2 / 3;
+    foot.position.set(Math.cos(a) * 0.52, 0.12, Math.sin(a) * 0.52);
+    group.add(foot);
+  }
+
+  group.position.set(x, 0, z);
+  scene.add(group);
+
+  // Dynamic body retained for ODE scaling
+  group.userData.body = body;
+  return group;
+}
+
+const waterTank = createTank(-6.4, 0.0, 0xf2a900);
+const o2Tank = createTank(-6.4, 2.1, 0x68b879);
+const batBank = createTank(-6.4, -2.1, 0x087ca9);
+
+// ============================================================
+// LARGE BLUE SOLAR ARRAY - RIGHT REAR
+// ============================================================
+
+const solarGroup = new THREE.Group();
+
+const solarPanel = new THREE.Mesh(
+  new THREE.BoxGeometry(6.0, 0.12, 3.7),
+  new THREE.MeshStandardMaterial({
+    color: 0x092b69, metalness: 0.72, roughness: 0.23
+  })
+);
+solarGroup.add(solarPanel);
+
+const solarGridMat = new THREE.LineBasicMaterial({
+  color: 0x5b9acb, transparent: true, opacity: 0.85
+});
+const solarLines = [];
+
+for (let x = -2.8; x <= 2.8; x += 0.4) {
+  solarLines.push(
+    new THREE.Vector3(x, 0.07, -1.8),
+    new THREE.Vector3(x, 0.07, 1.8)
+  );
+}
+for (let z = -1.7; z <= 1.7; z += 0.35) {
+  solarLines.push(
+    new THREE.Vector3(-2.9, 0.07, z),
+    new THREE.Vector3(2.9, 0.07, z)
+  );
+}
+
+const solarGridGeometry = new THREE.BufferGeometry().setFromPoints(solarLines);
+solarGroup.add(new THREE.LineSegments(solarGridGeometry, solarGridMat));
+
+solarGroup.position.set(5.5, 2.65, -3.7);
+solarGroup.rotation.x = 0.32;
+scene.add(solarGroup);
+
+// Solar panel support legs
+for (const x of [-2.3, 2.3]) {
+  const support = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.07, 0.1, 1.8, 12),
+    darkMetalMat
+  );
+  support.position.set(5.5 + x, 1.05, -3.7);
+  scene.add(support);
+}
+
+// ============================================================
+// THERMAL PDE VISUALIZATION WALL - FRONT LEFT
+// ============================================================
+
+const wallNodes = [];
+
+const wallBase = new THREE.Mesh(
+  new THREE.BoxGeometry(4.55, 0.2, 0.85),
+  darkMetalMat
+);
+wallBase.position.set(-3.35, 0.12, 5.35);
+scene.add(wallBase);
+
+for (let i = 0; i < 12; i++) {
+  const nodeMesh = new THREE.Mesh(
+    new THREE.BoxGeometry(0.34, 2.25, 0.72),
+    new THREE.MeshStandardMaterial({
+      color: 0x3b82f6, metalness: 0.2, roughness: 0.45
+    })
+  );
+
+  nodeMesh.position.set(-5.32 + i * 0.36, 1.28, 5.35);
+  scene.add(nodeMesh);
+  wallNodes.push(nodeMesh);
+}
+
+// ============================================================
+// END OF VISUAL SCENE
+// ============================================================
+const resp = await fetch('./sim_data.json');
     const simData = await resp.json();
 
     const select = document.getElementById('scenarioSelect');
@@ -350,9 +772,9 @@
       }
 
       sun.intensity = 2.3 * phi;
-      scene.fog.density = phi < 0.3 ? 0.055 : 0.016;
-      scene.fog.color.setHex(phi < 0.3 ? 0x6b2d14 : 0x2a120b);
-      scene.background.setHex(phi < 0.3 ? 0x6b2d14 : 0x2a120b);
+      scene.fog.density = phi < 0.3 ? 0.025 : 0.012;
+      scene.fog.color.setHex(phi < 0.3 ? 0x854326 : 0x4a2a1c);
+      scene.background.setHex(phi < 0.3 ? 0x854326 : 0x4a2a1c);
 
       document.getElementById('dayLabel').textContent = `${s.t[idx].toFixed(0)} / 1000`;
       document.getElementById('valWater').textContent = `${w.toFixed(0)} L`;
@@ -401,4 +823,3 @@
   </script>
 </body>
 </html>
-
