@@ -3,6 +3,5 @@ __pycache__/
 .venv/
 venv/
 outputs/
-web/sim_data.json
 .pytest_cache/
 .DS_Store
