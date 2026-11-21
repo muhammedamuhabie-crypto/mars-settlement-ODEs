@@ -18,10 +18,10 @@ class SettlementParams:
 
     # Atmosphere loop [kg]
     o2_use_per_person: float = 0.84        # c_o [kg / person / day]
-    co2_prod_per_person: float = 1.00      # p_c [kg / person / day]
+    co2_prod_per_person: float = 1.20      # p_c [kg / person / day]
     o2_leak_rate: float = 0.0015           # lambda_o [1 / day]
     moxie_o2_rate: float = 4.2             # eta_MOXIE [kg O2 / day]
-    moxie_co2_intake: float = 17.2          # mu_MOXIE [kg CO2 / day]
+    moxie_co2_intake: float = 5.775          # mu_MOXIE [kg CO2 / day]
     co2_scrub_rate: float = 0.005           # r_c [1 / day]
 
     # Biomass / Greenhouse loop [kg]

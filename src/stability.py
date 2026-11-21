@@ -32,7 +32,23 @@ def find_steady_state(p: SettlementParams) -> tuple[np.ndarray, np.ndarray]:
     pre = solve_ivp(lambda t, y: rhs_auto(y), (0.0, 2500.0), y0, method="BDF")
     y_guess = pre.y[:, -1]
 
-    y_star = fsolve(rhs_auto, y_guess, xtol=1e-10)
+    y_star, info, ier, message = fsolve(
+        rhs_auto,
+        y_guess,
+        xtol=1e-10,
+        full_output=True
+    )
+
+    if ier != 1:
+        raise RuntimeError(f"Equilibrium solver failed: {message}")
+
+    residual = rhs_auto(y_star)
+    residual_norm = np.linalg.norm(residual, ord=np.inf)
+
+    if residual_norm > 1e-8:
+        raise RuntimeError(
+            f"Equilibrium residual too large: {residual_norm:.3e}"
+        )
     J = compute_jacobian(rhs_auto, y_star)
     eigvals = np.linalg.eigvals(J)
     return y_star, eigvals
@@ -48,11 +64,21 @@ def sweep_water_recycling(out_dir: str = "outputs"):
     w_equilibria = []
     max_real_eigs = []
 
+    failed_values = []
+
     for r_w in r_values:
         p = SettlementParams(water_recycling=float(r_w))
-        y_star, eigvals = find_steady_state(p)
-        w_equilibria.append(max(0.0, y_star[0]))
-        max_real_eigs.append(float(np.max(np.real(eigvals))))
+
+        try:
+            y_star, eigvals = find_steady_state(p)
+            w_equilibria.append(max(0.0, y_star[0]))
+            max_real_eigs.append(float(np.max(np.real(eigvals))))
+
+        except RuntimeError as error:
+            w_equilibria.append(np.nan)
+            max_real_eigs.append(np.nan)
+            failed_values.append(float(r_w))
+            print(f"  Sweep warning: r_w={r_w:.4f} failed: {error}")
 
     p_nom = SettlementParams()
     crit_r = next(
@@ -64,8 +90,11 @@ def sweep_water_recycling(out_dir: str = "outputs"):
 
     ax1.plot(r_values * 100, w_equilibria, "o-", color="#0284c7", lw=2)
     ax1.axhline(p_nom.thresholds["water"], color="crimson", ls="--", label="Safety Threshold (300 L)")
+    if failed_values:
+        print("Failed sweep efficiencies (%): " +
+              ", ".join(f"{r * 100:.2f}" for r in failed_values))
     if crit_r is not None:
-        ax1.axvline(crit_r * 100, color="#1b9e77", ls=":", lw=2, label=f"Critical r_w ≈ {crit_r*100:.1f}%")
+        ax1.axvline(crit_r * 100, color="#1b9e77", ls=":", lw=2, label=f"Critical r_w â‰ˆ {crit_r*100:.1f}%")
     ax1.set_title("Equilibrium Water W* vs. Recycling Efficiency")
     ax1.set_xlabel("ECLSS Water Recycling Efficiency r_w [%]")
     ax1.set_ylabel("Steady-State Water W* [L]")
@@ -73,10 +102,10 @@ def sweep_water_recycling(out_dir: str = "outputs"):
     ax1.legend()
 
     ax2.plot(r_values * 100, max_real_eigs, "s-", color="#7570b3", lw=2)
-    ax2.axhline(0.0, color="black", ls="--", lw=1.2, label="Stability Boundary Re(λ) = 0")
-    ax2.set_title("Leading Jacobian Eigenvalue Max Re(λ)")
+    ax2.axhline(0.0, color="black", ls="--", lw=1.2, label="Stability Boundary Re(Î») = 0")
+    ax2.set_title("Leading Jacobian Eigenvalue Max Re(Î»)")
     ax2.set_xlabel("ECLSS Water Recycling Efficiency r_w [%]")
-    ax2.set_ylabel("Max Re(λ) [1/day]")
+    ax2.set_ylabel("Max Re(Î») [1/day]")
     ax2.grid(True, alpha=0.3)
     ax2.legend()
 
@@ -84,6 +113,9 @@ def sweep_water_recycling(out_dir: str = "outputs"):
     out_path = os.path.join(out_dir, "stability_bifurcation.png")
     fig.savefig(out_path, dpi=200)
     print(f"Saved stability bifurcation plot to {out_path}")
+    if failed_values:
+        print("Failed sweep efficiencies (%): " +
+              ", ".join(f"{r * 100:.2f}" for r in failed_values))
     if crit_r is not None:
         print(f"Critical minimum water recycling efficiency (with ISRU): r_w >= {crit_r*100:.2f}%")
 
@@ -95,5 +127,5 @@ if __name__ == "__main__":
     print("=== Autonomous Equilibrium State y* (Nominal ISRU) ===")
     for lbl, val in zip(labels, y_eq[:5]):
         print(f"  {lbl:<14}: {val:8.2f}")
-    print(f"  Leading Eigenvalue Re(λ)_max: {np.max(np.real(eigs)):.5f} day^-1 (Asymptotically Stable)")
+    print(f"  Leading Eigenvalue Re(Î»)_max: {np.max(np.real(eigs)):.5f} day^-1 (Asymptotically Stable)")
     sweep_water_recycling()

@@ -71,7 +71,7 @@ def settlement_rhs(t: float, y: np.ndarray, p: SettlementParams, scenario: str) 
     # 2. Saturation factors
     m_w = monod(W, p.k_water)
     m_c = monod(C, p.k_co2)
-    m_c_moxie = monod(max(0.0, C - 10.0), p.k_co2)
+    m_c_moxie = monod(C, p.k_co2)
     m_e = monod(E, p.k_energy)
 
     # 3. Crop growth & harvest
@@ -92,7 +92,7 @@ def settlement_rhs(t: float, y: np.ndarray, p: SettlementParams, scenario: str) 
     # 5. Oxygen balance
     dOdt = (
         p.o2_per_crop * growth
-        + moxie_o2 * m_e
+        + moxie_o2 * m_c_moxie * m_e
         - p.o2_use_per_person * p.crew_size
         - p.o2_leak_rate * max(O, 0.0)
     )
@@ -101,7 +101,7 @@ def settlement_rhs(t: float, y: np.ndarray, p: SettlementParams, scenario: str) 
     dCdt = (
         p.co2_prod_per_person * p.crew_size
         - p.co2_per_crop * growth
-        - 0.0
+        - moxie_co2 * m_c_moxie * m_e
         - p.co2_scrub_rate * max(C, 0.0)
     )
 
